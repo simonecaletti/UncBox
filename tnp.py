@@ -1,7 +1,10 @@
 import pandas as pd
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+
+Nc=3
 
 def compute_ratio(df1, df2):
     """Compute the ratio of two dataframes with error propagation."""
@@ -9,6 +12,33 @@ def compute_ratio(df1, df2):
     ratio['val'] = df1['val'] / df2['val']
     ratio['err'] = ratio['val'] * np.sqrt((df1['err']/df1['val'])**2 + (df2['err']/df2['val'])**2)
     return ratio
+
+def bernstein(n, nu, x):
+    return math.comb(n, nu) * (x ** nu) * ((1 - x) ** (n - nu))
+
+
+def chebyshev(nu, x):
+    return np.polynomial.chebyshev.Chebyshev.basis(nu)(x)
+
+def tnp_func1(k, tnps, x):
+    """Calculate the TNP function for a given degree k and tnps."""
+    if k < 0 or k >= len(tnps):
+        raise ValueError("k must be in the range [0, len(tnps)-1]")
+    return sum(bernstein(k, nu, x) * tnps[nu] for nu in range(k + 1))
+
+def compute_envelope(df,k=2):
+    up=df.copy()
+    down=df.copy()
+    unc=df.copy()
+
+    # unc['val'] = 1.0/Nc**2*abs(unc['val'])*np.sqrt(sum(bernstein(k, j, unc['xmid'])**2 for j in range(k+1)))
+    unc['val'] = 1.0/Nc**2*abs(unc['val'])*np.sqrt(sum(chebyshev(j, unc['xmid'])**2 for j in range(k+1)))
+
+    up['val'] = up['val'] + unc['val']
+    down['val'] = down['val'] - unc['val']
+
+    return up, down
+
 
 
 orders = ["LO","NLO","NLO_only","NNLO","NNLO_only"]
@@ -53,12 +83,13 @@ for order in orders:
                     data[order][ob]['LC']["val"]=data[order][ob]['LC']["val"]+data[order][ob][col]["val"]
                     data[order][ob]['LC']["err"]=np.sqrt(data[order][ob]['LC']["err"]**2+data[order][ob][col]["err"]**2)
 
+
 cols={"FC":"red","LC":"blue"}
-NORM = "FC"
+NORM = "LC"
     
 with PdfPages("plots/epem3jet.pdf") as pdf:
     for ob in obs:
-        fig, axes = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(10,8),gridspec_kw={'height_ratios': [3, 1]})
+        fig, axes = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(10,8),gridspec_kw={'height_ratios': [1, 1]})
         for ax in axes:
             ax.grid(alpha=0.2, linestyle=":", color="black")
         # axes[0].set_xlim([0.9,10.1])
@@ -74,9 +105,18 @@ with PdfPages("plots/epem3jet.pdf") as pdf:
             axes[0].plot(bins, data["NNLO"][ob][col]["val"].values, label=col,color=cols[col],linestyle='None',marker='x')
             axes[0].errorbar(bins, data["NNLO"][ob][col]["val"].values, data["NNLO"][ob][col]["err"].values, ls="none", capsize=3,color=cols[col], linewidth=1)
 
-            rat = compute_ratio(data["NNLO"][ob][col], data["NNLO"][ob]["FC"])
+            rat = compute_ratio(data["NNLO"][ob][col], data["NNLO"][ob][NORM])
             axes[1].plot(bins, rat["val"].values, label=col,color=cols[col],linestyle='None',marker='x')
             axes[1].errorbar(bins, rat["val"].values, rat["err"].values, ls="none", capsize=3,color=cols[col], linewidth=1)
+
+        up, down = compute_envelope(data["NNLO"][ob]['LC'])
+        axes[0].plot(bins, up["val"].values,color="green",linestyle='None',marker='x')
+        axes[0].plot(bins, down["val"].values,color="green",linestyle='None',marker='x')
+
+        ratup = compute_ratio(up, data["NNLO"][ob][NORM])
+        ratdown = compute_ratio(down, data["NNLO"][ob][NORM])
+        axes[1].plot(bins, ratup["val"].values,color="green",linestyle='None',marker='x')
+        axes[1].plot(bins, ratdown["val"].values,color="green",linestyle='None',marker='x')
 
         axes[0].legend(ncol=2)
         # axes[1].legend()
