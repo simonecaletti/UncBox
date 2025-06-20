@@ -3,6 +3,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
+def compute_ratio(df1, df2):
+    """Compute the ratio of two dataframes with error propagation."""
+    ratio = df1.copy()
+    ratio['val'] = df1['val'] / df2['val']
+    ratio['err'] = ratio['val'] * np.sqrt((df1['err']/df1['val'])**2 + (df2['err']/df2['val'])**2)
+    return ratio
+
+
 orders = ["LO","NLO","NLO_only","NNLO","NNLO_only"]
 
 obs = ["1mT","C","y23","HJM","WJB","TJB"]
@@ -46,6 +54,7 @@ for order in orders:
                     data[order][ob]['LC']["err"]=np.sqrt(data[order][ob]['LC']["err"]**2+data[order][ob][col]["err"]**2)
 
 cols={"FC":"red","LC":"blue"}
+NORM = "FC"
     
 with PdfPages("plots/epem3jet.pdf") as pdf:
     for ob in obs:
@@ -54,7 +63,8 @@ with PdfPages("plots/epem3jet.pdf") as pdf:
             ax.grid(alpha=0.2, linestyle=":", color="black")
         # axes[0].set_xlim([0.9,10.1])
         # axes[1].set_xscale('log')
-        axes[1].set_yscale('log')
+        axes[0].set_yscale('log')
+        axes[1].set_ylim([0.8,1.2])
 
         axes[0].set_title(ob)
 
@@ -63,6 +73,10 @@ with PdfPages("plots/epem3jet.pdf") as pdf:
         for col in ["LC","FC"]:
             axes[0].plot(bins, data["NNLO"][ob][col]["val"].values, label=col,color=cols[col],linestyle='None',marker='x')
             axes[0].errorbar(bins, data["NNLO"][ob][col]["val"].values, data["NNLO"][ob][col]["err"].values, ls="none", capsize=3,color=cols[col], linewidth=1)
+
+            rat = compute_ratio(data["NNLO"][ob][col], data["NNLO"][ob]["FC"])
+            axes[1].plot(bins, rat["val"].values, label=col,color=cols[col],linestyle='None',marker='x')
+            axes[1].errorbar(bins, rat["val"].values, rat["err"].values, ls="none", capsize=3,color=cols[col], linewidth=1)
 
         axes[0].legend(ncol=2)
         # axes[1].legend()
