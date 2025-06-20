@@ -28,7 +28,7 @@ def compute_ratio(df1, df2):
 # Analysis specific variables
 
 orders = ["LO","NLO","NLO_only","NNLO","NNLO_only"]
-obs = ["1mT","C","y23","HJM","WJB","TJB"]
+obs = ["1mT","C","y23","TJB"]
 all_cols = ["N2","N0","Nm2","NFN","NFNm1","NF2","stupid"]
 LC_cols = ["N2","NFN","NF2"]
 
@@ -101,11 +101,13 @@ with PdfPages(outputfile) as pdf:
         up, down = tnp.compute_envelope(data["NNLO"][ob]['LC'], fact, degree=degree, basis=basis)
         axes[0].plot(bins, up["val"].values,color="green",linestyle='None',marker='x')
         axes[0].plot(bins, down["val"].values,color="green",linestyle='None',marker='x')
+        #axes[0].fill_between(bins, down["val"].values, up["val"].values, color="green", alpha=0.1)
 
         ratup = compute_ratio(up, data["NNLO"][ob][NORM])
         ratdown = compute_ratio(down, data["NNLO"][ob][NORM])
-        axes[1].plot(bins, ratup["val"].values,color="green",linestyle='None',marker='x')
-        axes[1].plot(bins, ratdown["val"].values,color="green",linestyle='None',marker='x')
+        axes[1].plot(bins, ratup["val"].values,color="green",linestyle='solid',marker='None', alpha=0.3)
+        axes[1].plot(bins, ratdown["val"].values,color="green",linestyle='solid',marker='None', alpha=0.3)
+        axes[1].fill_between(bins, ratdown["val"].values, ratup["val"].values, color="green", alpha=0.1)
 
         axes[0].legend(ncol=2)
         # axes[1].legend()
