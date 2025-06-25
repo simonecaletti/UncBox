@@ -11,7 +11,7 @@ import uncbox.tnp as tnp
 # Parameters
 
 Nc=3
-basis = 0 #0: Bernstein, 1: Chebyshev
+#basis = 0 #0: Bernstein, 1: Chebyshev
 degree = 2 # Degree of the polynomial
 
 #####################################
@@ -77,39 +77,59 @@ cols={"FC":"red","LC":"blue"}
 NORM = "LC"
 fact = 1.0/Nc**2
 
+#x_min = [0.05, 0.0, 0.0, 0.05]
+#x_max = [0.40, 1.0, 0.4, 0.4]
+
 with PdfPages(outputfile) as pdf:
     for ob in obs:
         fig, axes = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(10,8),gridspec_kw={'height_ratios': [1, 1]})
         for ax in axes:
             ax.grid(alpha=0.2, linestyle=":", color="black")
-        # axes[0].set_xlim([0.9,10.1])
-        # axes[1].set_xscale('log')
-        axes[0].set_yscale('log')
-        axes[1].set_ylim([0.8,1.2])
-        axes[0].set_title(ob)
+        axes[0].set_ylim([0.7,1.3])
+        #axes[0].set_xlim([ixmin, ixmax])
+        axes[1].set_xlabel(ob)
+        #axes[1].set_xscale('log')
+        #axes[0].set_yscale('log')
+        axes[1].set_ylim([0.7,1.3])
+        axes[0].set_ylabel("Ratio to LC")
+        axes[1].set_ylabel("Ratio to LC")
+        axes[0].set_title(r'$e^+e- \rightarrow 3 \text{jets}$')
 
         bins = data["NNLO"][ob]['FC']["xmid"].values
 
         for col in ["LC","FC"]:
-            axes[0].plot(bins, data["NNLO"][ob][col]["val"].values, label=col,color=cols[col],linestyle='None',marker='x')
-            axes[0].errorbar(bins, data["NNLO"][ob][col]["val"].values, data["NNLO"][ob][col]["err"].values, ls="none", capsize=3,color=cols[col], linewidth=1)
+            #axes[0].plot(bins, data["NNLO"][ob][col]["val"].values, label=col,color=cols[col],linestyle='None',marker='x')
+            #axes[0].errorbar(bins, data["NNLO"][ob][col]["val"].values, data["NNLO"][ob][col]["err"].values, ls="none", capsize=3,color=cols[col], linewidth=1)
+
+            rat = compute_ratio(data["NNLO"][ob][col], data["NNLO"][ob][NORM])
+            axes[0].plot(bins, rat["val"].values, label=col,color=cols[col],linestyle='None',marker='x')
+            axes[0].errorbar(bins, rat["val"].values, rat["err"].values, ls="none", capsize=3,color=cols[col], linewidth=1)
 
             rat = compute_ratio(data["NNLO"][ob][col], data["NNLO"][ob][NORM])
             axes[1].plot(bins, rat["val"].values, label=col,color=cols[col],linestyle='None',marker='x')
             axes[1].errorbar(bins, rat["val"].values, rat["err"].values, ls="none", capsize=3,color=cols[col], linewidth=1)
 
-        up, down = tnp.compute_envelope(data["NNLO"][ob]['LC'], fact, degree=degree, basis=basis)
-        axes[0].plot(bins, up["val"].values,color="green",linestyle='None',marker='x')
-        axes[0].plot(bins, down["val"].values,color="green",linestyle='None',marker='x')
-        #axes[0].fill_between(bins, down["val"].values, up["val"].values, color="green", alpha=0.1)
+        up0, down0 = tnp.compute_envelope(data["NNLO"][ob]['LC'], fact, degree=degree, basis=0)
 
-        ratup = compute_ratio(up, data["NNLO"][ob][NORM])
-        ratdown = compute_ratio(down, data["NNLO"][ob][NORM])
-        axes[1].plot(bins, ratup["val"].values,color="green",linestyle='solid',marker='None', alpha=0.3)
-        axes[1].plot(bins, ratdown["val"].values,color="green",linestyle='solid',marker='None', alpha=0.3)
-        axes[1].fill_between(bins, ratdown["val"].values, ratup["val"].values, color="green", alpha=0.1)
+        ratup = compute_ratio(up0, data["NNLO"][ob][NORM])
+        ratdown = compute_ratio(down0, data["NNLO"][ob][NORM])
+        axes[0].plot(bins, ratup["val"].values,color="green",linestyle='solid',marker='None', alpha=0.3)
+        axes[0].plot(bins, ratdown["val"].values,color="green",linestyle='solid',marker='None', alpha=0.3)
+        axes[0].fill_between(bins, ratdown["val"].values, ratup["val"].values, color="green", alpha=0.1)
+
+        up1, down1 = tnp.compute_envelope(data["NNLO"][ob]['LC'], fact, degree=degree, basis=1)
+
+        ratup = compute_ratio(up1, data["NNLO"][ob][NORM])
+        ratdown = compute_ratio(down1, data["NNLO"][ob][NORM])
+        axes[1].plot(bins, ratup["val"].values,color="purple",linestyle='solid',marker='None', alpha=0.3)
+        axes[1].plot(bins, ratdown["val"].values,color="purple",linestyle='solid',marker='None', alpha=0.3)
+        axes[1].fill_between(bins, ratdown["val"].values, ratup["val"].values, color="purple", alpha=0.1)
 
         axes[0].legend(ncol=2)
+
+        axes[0].text(0.02, 0.05, "Bernstein (k=2)", transform=axes[0].transAxes, fontsize=12)
+        axes[1].text(0.02, 0.05, "Chebyshev (k=2)", transform=axes[1].transAxes, fontsize=12)
+
         # axes[1].legend()
         axes[0].minorticks_on()
 
